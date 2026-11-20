@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
+import userRoutes from "./routes/user-routes.js";
+
+
 
 dotenv.config();
 
@@ -10,6 +13,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api", userRoutes);
 
 app.get("/", (_req, res) => {
   res.send("WedPlan Server is running!");
@@ -31,3 +35,6 @@ const startServer = async () => {
 };
 
 startServer();
+
+
+// token fbcb07d012ef33c402e24adb0d5c1143ddf699f09c3575a98b0365407a667fb0
