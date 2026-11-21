@@ -311,4 +311,72 @@ router.delete(
 );
 
 
+// Public: Get active services with search, filter and sorting
+router.get("/services", async (req, res) => {
+  try {
+    const { search, category, location, sort } = req.query;
+
+    const filter: {
+      status: string;
+      serviceName?: { $regex: string; $options: string };
+      category?: { $regex: string; $options: string };
+      location?: { $regex: string; $options: string };
+    } = {
+      status: "active",
+    };
+
+    if (typeof search === "string" && search.trim()) {
+      filter.serviceName = {
+        $regex: search.trim(),
+        $options: "i",
+      };
+    }
+
+    if (typeof category === "string" && category.trim()) {
+      filter.category = {
+        $regex: category.trim(),
+        $options: "i",
+      };
+    }
+
+    if (typeof location === "string" && location.trim()) {
+      filter.location = {
+        $regex: location.trim(),
+        $options: "i",
+      };
+    }
+
+    const sortOption: { price?: 1 | -1; createdAt?: 1 | -1 } =
+      sort === "price_asc"
+        ? { price: 1 }
+        : sort === "price_desc"
+          ? { price: -1 }
+          : { createdAt: -1 };
+
+    const db = await connectDB();
+
+    const services = await db
+      .collection("services")
+      .find(filter)
+      .sort(sortOption)
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      message: "Services retrieved successfully",
+      total: services.length,
+      services,
+    });
+  } catch (error) {
+    console.error("Get public services error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve services",
+    });
+  }
+});
+
+
+
 export default router;
