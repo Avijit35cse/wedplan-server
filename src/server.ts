@@ -7,6 +7,8 @@ import userRoutes from "./routes/user-routes.js";
 import serviceRoutes from "./routes/service-routes.js"
 import adminRoutes from "./routes/admin-routes.js";
 import  bookingRoutes  from "./routes/booking-routes.js";
+import uploadRoutes from "./routes/upload-routes.js";
+
 
 
 
@@ -20,6 +22,7 @@ app.use("/api", userRoutes);
 app.use("/api", serviceRoutes);
 app.use("/api", adminRoutes);
 app.use("/api", bookingRoutes);
+app.use("/api", uploadRoutes);
 
 app.get("/", (_req, res) => {
   res.send("WedPlan Server is running!");
