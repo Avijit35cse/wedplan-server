@@ -3,6 +3,7 @@ import { Router } from "express";
 import { connectDB } from "../config/db.js";
 import { verifyToken } from "../middleware/verify-token.js";
 import { authorizeRole } from "../middleware/authorize-role.js";
+import { ObjectId } from "mongodb";
 
 const router = Router();
 
@@ -45,6 +46,122 @@ router.get(
     }
   }
 );
+
+
+// Vendor: Update own service
+router.put(
+  "/services/:id",
+  verifyToken,
+  authorizeRole("vendor"),
+  async (req, res) => {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const id = req.params.id;
+
+      if (typeof id !== "string" || !ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid service ID",
+        });
+      }
+      const {
+        serviceName,
+        category,
+        description,
+        price,
+        location,
+        images,
+      } = req.body;
+
+      if (
+        typeof serviceName !== "string" ||
+        !serviceName.trim() ||
+        typeof category !== "string" ||
+        !category.trim() ||
+        typeof description !== "string" ||
+        !description.trim() ||
+        typeof location !== "string" ||
+        !location.trim() ||
+        typeof price !== "number" ||
+        !Number.isFinite(price) ||
+        price <= 0 ||
+        !Array.isArray(images) ||
+        images.length === 0 ||
+        !images.every(
+          (image: unknown) =>
+            typeof image === "string" && image.trim().length > 0
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid service information",
+        });
+      }
+
+      const db = await connectDB();
+
+      const service = await db.collection("services").findOne({
+        _id: new ObjectId(id),
+      });
+
+      if (!service) {
+        return res.status(404).json({
+          success: false,
+          message: "Service not found",
+        });
+      }
+
+      if (service.vendorId !== user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only update your own services",
+        });
+      }
+
+      const updatedService = {
+        serviceName: serviceName.trim(),
+        category: category.trim(),
+        description: description.trim(),
+        price,
+        location: location.trim(),
+        images: images.map((image: string) => image.trim()),
+        status: "pending",
+        updatedAt: new Date(),
+      };
+
+      await db.collection("services").updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedService }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Service updated successfully. Waiting for admin approval.",
+        service: {
+          ...service,
+          ...updatedService,
+        },
+      });
+    } catch (error) {
+      console.error("Update service error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update service",
+      });
+    }
+  }
+);
+
+
 // Vendor: Create a new service
 router.post(
   "/services",
@@ -128,5 +245,7 @@ router.post(
     }
   }
 );
+
+
 
 export default router;
