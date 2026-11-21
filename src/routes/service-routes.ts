@@ -55,6 +55,31 @@ router.post(
 
       const db = await connectDB();
 
+      // Check vendor's premium status
+      const vendor = await db.collection("user").findOne(
+        { _id: new ObjectId(user.id) },
+        { projection: { isPremium: 1 } }
+      );
+
+      const isPremium = vendor?.isPremium === true;
+
+      // Free vendors can have maximum 3 active services
+      if (!isPremium) {
+        const activeServiceCount = await db
+          .collection("services")
+          .countDocuments({
+            vendorId: user.id,
+            status: "active",
+          });
+
+        if (activeServiceCount >= 3) {
+          return res.status(403).json({
+            success: false,
+            message: "Free vendors can have a maximum of 3 active services. Upgrade to Premium for unlimited services.",
+          });
+        }
+      }
+
       const newService = {
         vendorId: user.id,
         serviceName: serviceName.trim(),
