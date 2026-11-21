@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { UserRole } from "../types/express.js";
+import { connectDB } from "../config/db.js";
+import { ObjectId } from "mongodb";
 
 const authUrl = process.env.BETTER_AUTH_URL;
 
@@ -56,6 +58,27 @@ const verifyToken = async (
             return res.status(401).json({
                 success: false,
                 message: "Invalid authentication token",
+            });
+        }
+
+        // Check current user status from database
+        const db = await connectDB();
+
+        const user = await db.collection("user").findOne({
+            _id: new ObjectId(id),
+        });
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        if (user.isBlocked === true) {
+            return res.status(403).json({
+                success: false,
+                message: "Your account has been blocked",
             });
         }
 
