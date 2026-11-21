@@ -7,6 +7,90 @@ import { ObjectId } from "mongodb";
 
 const router = Router();
 
+// Vendor: Create a new service
+router.post(
+  "/services",
+  verifyToken,
+  authorizeRole("vendor"),
+  async (req, res) => {
+    try {
+      const {
+        serviceName,
+        category,
+        description,
+        price,
+        location,
+        images,
+      } = req.body;
+
+      if (
+        !serviceName?.trim() ||
+        !category?.trim() ||
+        !description?.trim() ||
+        !location?.trim() ||
+        typeof price !== "number" ||
+        !Number.isFinite(price) ||
+        price <= 0 ||
+        !Array.isArray(images) ||
+        images.length === 0 ||
+        !images.every(
+          (image: unknown) =>
+            typeof image === "string" && image.trim().length > 0
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid service information",
+        });
+      }
+
+      const user = req.user;
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const db = await connectDB();
+
+      const newService = {
+        vendorId: user.id,
+        serviceName: serviceName.trim(),
+        category: category.trim(),
+        description: description.trim(),
+        price,
+        location: location.trim(),
+        images,
+        status: "pending",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await db
+        .collection("services")
+        .insertOne(newService);
+
+      return res.status(201).json({
+        success: true,
+        message: "Service submitted for admin approval",
+        service: {
+          _id: result.insertedId,
+          ...newService,
+        },
+      });
+    } catch (error) {
+      console.error("Create service error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create service",
+      });
+    }
+  }
+);
+
 // Vendor: Get all own services
 router.get(
   "/services/my-services",
@@ -161,44 +245,13 @@ router.put(
   }
 );
 
-
-// Vendor: Create a new service
-router.post(
-  "/services",
+// Vendor: Delete own service
+router.delete(
+  "/services/:id",
   verifyToken,
   authorizeRole("vendor"),
   async (req, res) => {
     try {
-      const {
-        serviceName,
-        category,
-        description,
-        price,
-        location,
-        images,
-      } = req.body;
-
-      if (
-        !serviceName?.trim() ||
-        !category?.trim() ||
-        !description?.trim() ||
-        !location?.trim() ||
-        typeof price !== "number" ||
-        !Number.isFinite(price) ||
-        price <= 0 ||
-        !Array.isArray(images) ||
-        images.length === 0 ||
-        !images.every(
-          (image: unknown) =>
-            typeof image === "string" && image.trim().length > 0
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Please provide valid service information",
-        });
-      }
-
       const user = req.user;
 
       if (!user) {
@@ -208,44 +261,54 @@ router.post(
         });
       }
 
+      const id = req.params.id;
+
+      if (typeof id !== "string" || !ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid service ID",
+        });
+      }
+
       const db = await connectDB();
 
-      const newService = {
+      const service = await db.collection("services").findOne({
+        _id: new ObjectId(id),
+      });
+
+      if (!service) {
+        return res.status(404).json({
+          success: false,
+          message: "Service not found",
+        });
+      }
+
+      if (service.vendorId !== user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only delete your own services",
+        });
+      }
+
+      await db.collection("services").deleteOne({
+        _id: new ObjectId(id),
         vendorId: user.id,
-        serviceName: serviceName.trim(),
-        category: category.trim(),
-        description: description.trim(),
-        price,
-        location: location.trim(),
-        images,
-        status: "pending",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      });
 
-      const result = await db
-        .collection("services")
-        .insertOne(newService);
-
-      return res.status(201).json({
+      return res.status(200).json({
         success: true,
-        message: "Service submitted for admin approval",
-        service: {
-          _id: result.insertedId,
-          ...newService,
-        },
+        message: "Service deleted successfully",
       });
     } catch (error) {
-      console.error("Create service error:", error);
+      console.error("Delete service error:", error);
 
       return res.status(500).json({
         success: false,
-        message: "Failed to create service",
+        message: "Failed to delete service",
       });
     }
   }
 );
-
 
 
 export default router;
