@@ -343,4 +343,60 @@ router.patch(
     }
 );
 
+
+// Admin: Get dashboard statistics
+router.get(
+    "/admin/stats",
+    verifyToken,
+    authorizeRole("admin"),
+    async (_req, res) => {
+        try {
+            const db = await connectDB();
+
+            const [
+                totalUsers,
+                totalCustomers,
+                totalVendors,
+                totalServices,
+                activeServices,
+                pendingServices,
+                rejectedServices,
+                totalBookings,
+            ] = await Promise.all([
+                db.collection("user").countDocuments(),
+                db.collection("user").countDocuments({ role: "customer" }),
+                db.collection("user").countDocuments({ role: "vendor" }),
+                db.collection("services").countDocuments(),
+                db.collection("services").countDocuments({ status: "active" }),
+                db.collection("services").countDocuments({ status: "pending" }),
+                db.collection("services").countDocuments({ status: "rejected" }),
+                db.collection("bookings").countDocuments(),
+            ]);
+
+            return res.status(200).json({
+                success: true,
+                message: "Dashboard statistics retrieved successfully",
+                stats: {
+                    totalUsers,
+                    totalCustomers,
+                    totalVendors,
+                    totalServices,
+                    activeServices,
+                    pendingServices,
+                    rejectedServices,
+                    totalBookings,
+                },
+            });
+        } catch (error) {
+            console.error("Get dashboard statistics error:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: "Failed to retrieve dashboard statistics",
+            });
+        }
+    }
+);
+
+
 export default router;
