@@ -55,30 +55,8 @@ router.post(
 
       const db = await connectDB();
 
-      // Check vendor's premium status
-      const vendor = await db.collection("user").findOne(
-        { _id: new ObjectId(user.id) },
-        { projection: { isPremium: 1 } }
-      );
-
-      const isPremium = vendor?.isPremium === true;
-
-      // Free vendors can have maximum 3 active services
-      if (!isPremium) {
-        const activeServiceCount = await db
-          .collection("services")
-          .countDocuments({
-            vendorId: user.id,
-            status: "active",
-          });
-
-        if (activeServiceCount >= 3) {
-          return res.status(403).json({
-            success: false,
-            message: "Free vendors can have a maximum of 3 active services. Upgrade to Premium for unlimited services.",
-          });
-        }
-      }
+      // New services are submitted as pending for admin approval.
+      // Free vendor's active-service limit is checked during admin approval.
 
       const newService = {
         vendorId: user.id,
@@ -87,7 +65,7 @@ router.post(
         description: description.trim(),
         price,
         location: location.trim(),
-        images,
+        images: images.map((image: string) => image.trim()),
         status: "pending",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -156,7 +134,6 @@ router.get(
   }
 );
 
-
 // Vendor: Update own service
 router.put(
   "/services/:id",
@@ -181,6 +158,7 @@ router.put(
           message: "Invalid service ID",
         });
       }
+
       const {
         serviceName,
         category,
@@ -335,7 +313,6 @@ router.delete(
   }
 );
 
-
 // Public: Get active services with search, filter and sorting
 router.get("/services", async (req, res) => {
   try {
@@ -401,7 +378,5 @@ router.get("/services", async (req, res) => {
     });
   }
 });
-
-
 
 export default router;
