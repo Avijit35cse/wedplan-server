@@ -1,4 +1,4 @@
-
+﻿
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -8,6 +8,7 @@ import serviceRoutes from "./routes/service-routes.js"
 import adminRoutes from "./routes/admin-routes.js";
 import  bookingRoutes  from "./routes/booking-routes.js";
 import uploadRoutes from "./routes/upload-routes.js";
+import paymentRoutes from "./routes/payment-routes.js";
 
 
 
@@ -17,6 +18,8 @@ dotenv.config();
 const app = express();
 
 app.use(cors());
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+app.use('/api', paymentRoutes);
 app.use(express.json());
 app.use("/api", userRoutes);
 app.use("/api", serviceRoutes);
@@ -44,3 +47,8 @@ const startServer = async () => {
 };
 
 startServer();
+
+
+
+
+
