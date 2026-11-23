@@ -1,4 +1,4 @@
-
+﻿
 import { Router } from "express";
 import { connectDB } from "../config/db.js";
 import { verifyToken } from "../middleware/verify-token.js";
@@ -379,4 +379,47 @@ router.get("/services", async (req, res) => {
   }
 });
 
+
+// Public: Get a single active service by ID
+router.get("/services/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (typeof id !== "string" || !ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid service ID",
+      });
+    }
+
+    const db = await connectDB();
+
+    const service = await db.collection("services").findOne({
+      _id: new ObjectId(id),
+      status: "active",
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Service retrieved successfully",
+      service,
+    });
+  } catch (error) {
+    console.error("Get service details error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve service",
+    });
+  }
+});
+
 export default router;
+
